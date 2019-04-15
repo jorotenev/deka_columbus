@@ -1,6 +1,6 @@
 from flask import Flask
 from logging.config import dictConfig
-from app.adapters.redis.datastore_facade import init_redis_app
+from app.adapters.redis import init_redis_app
 
 def _base_app(app_config):
     """
