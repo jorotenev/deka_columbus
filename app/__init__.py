@@ -1,6 +1,9 @@
 from flask import Flask
 from logging.config import dictConfig
-from app.adapters.redis import init_redis_app
+from app.adapters.redis import RedisAdapter
+
+redis_adapter = None
+
 
 def _base_app(app_config):
     """
@@ -22,11 +25,13 @@ def create_app(app_config):
     Register all blueprints here
     """
 
+    global redis_adapter
     import logging as log
     log.info(f"Creating an app for environment: {app_config.__class__.__name__}")
 
     app = _base_app(app_config)
-    init_redis_app(app)
+    redis_adapter = RedisAdapter(app)
+    redis_adapter.init_app(app)
     from .api import api as api_blueprint
     app.register_blueprint(api_blueprint, url_prefix="/api")
 

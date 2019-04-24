@@ -1,9 +1,8 @@
 import json
 import logging as log
+import app
 
 # constant keys
-from app.adapters.redis import RedisAdapter
-
 STH, NTH, LNG, LAT = 'southeast', 'northwest', 'lng', 'lat'
 BOUNDARIES_KEY = "cities:boundaries"
 COORDINATES_KEY = "cities:coordinates"
@@ -15,7 +14,7 @@ _facade = None
 def get_datastore_facade():
     global _facade
     if not _facade:
-        _facade = _DataStoreFacade(RedisAdapter())
+        _facade = _DataStoreFacade(app.redis_adapter)
 
     return _facade
 

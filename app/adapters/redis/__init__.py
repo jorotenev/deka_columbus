@@ -11,9 +11,14 @@ def init_redis_app(app):
 
 
 class RedisAdapter():
-    def __init__(self):
-        global _redis
-        self._r = _redis
+    def __init__(self, app=None):
+        # global _redis
+        if app:
+            self.init_app(app)
+        # self._r = _redis
+
+    def init_app(self, app):
+        self._r = StrictRedis(host=app.config.get("REDIS_HOST"), decode_responses=True)
 
     def georadius(self, key, lat, lng, radius, limit=None):
         """
