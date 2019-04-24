@@ -65,6 +65,7 @@ class HTTPMethodsMixin(object):
                       url_args=None,
                       url_for_args=None,
                       raw_response=False,
+                      json_response=None,
                       headers=None) -> Response:
         """
         convenience method that wraps a http request to the flask app.
@@ -84,7 +85,7 @@ class HTTPMethodsMixin(object):
             url_for_args = {}
         if url_args is None:
             url_args = {}
-
+        if raw_response: assert not json_response, "invalid call. can't return raw_response as json"
         common_args = [url_for(url, **url_for_args, _external=True)]
         jsonified = data
         if not isinstance(data, str) and data:
@@ -103,7 +104,8 @@ class HTTPMethodsMixin(object):
         if not method:
             raise Exception("unknown HTTP method %s" % method_name)
         res = method(*common_args, **common_kwargs)
-
+        if json_response:
+            return res.json
         return res if raw_response else res.get_data(as_text=True)
 
 
