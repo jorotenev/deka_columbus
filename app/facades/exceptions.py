@@ -1,0 +1,1 @@
+class NoCityInDataStoreException(Exception): pass

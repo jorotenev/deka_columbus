@@ -1,0 +1,1 @@
+Simple SPA to visualise the results of the `columbus` api.

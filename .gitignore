@@ -4,3 +4,5 @@ __pycache__
 .env_prod
 .env_dev
 .env
+
+node_modules

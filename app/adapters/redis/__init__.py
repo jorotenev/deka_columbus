@@ -7,7 +7,9 @@ _redis = None
 
 def init_redis_app(app):
     global _redis
-    _redis = StrictRedis(host=app.config.get("REDIS_HOST"), decode_responses=True)
+    _redis = StrictRedis(host=app.config.get("REDIS_HOST"),
+                         socket_connect_timeout=2,
+                         decode_responses=True)
 
 
 class RedisAdapter():
@@ -18,7 +20,12 @@ class RedisAdapter():
         # self._r = _redis
 
     def init_app(self, app):
-        self._r = StrictRedis(host=app.config.get("REDIS_HOST"), decode_responses=True)
+        self._r = StrictRedis(host=app.config.get("REDIS_HOST"),
+                              socket_timeout=2,
+                              decode_responses=True)
+
+    def ping(self):
+        return self._r.ping()
 
     def georadius(self, key, lat, lng, radius, limit=None):
         """

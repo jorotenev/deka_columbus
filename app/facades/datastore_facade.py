@@ -1,8 +1,10 @@
 import json
 import logging as log
 import app
+from app.facades.exceptions import NoCityInDataStoreException
 
 # constant keys
+
 STH, NTH, LNG, LAT = 'southeast', 'northwest', 'lng', 'lat'
 BOUNDARIES_KEY = "cities:boundaries"
 COORDINATES_KEY = "cities:coordinates"
@@ -94,22 +96,6 @@ class CityCoords():
         return None, None
 
 
-class NoCityInDataStoreException(Exception): pass
 
 
-if __name__ == '__main__':
-    import connection  # _redis
-    from collections import namedtuple
 
-    config = {'REDIS_HOST': '192.168.99.100'}
-    _fake_app_type = namedtuple('FakeApp', ['config'])
-    fake_app = _fake_app_type(config=config)
-    connection.init_redis_app(fake_app)
-    redis = connection._redis
-    redis_facade = RedisAdapter(redis)
-    facade = _DataStoreFacade(redis_facade)
-
-    sofia = 'sofia'
-    lat, lng = 42.695466, 23.318973  # sofia center
-    result = facade.query(lat=lat, lng=lng, radius=1000, place_types=['bar'])
-    print(result)
