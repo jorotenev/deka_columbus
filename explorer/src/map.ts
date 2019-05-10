@@ -1,4 +1,6 @@
 import {Place, Places} from "./custom_types";
+import {DomEvent} from "leaflet";
+import on = DomEvent.on;
 
 export let map;
 export let layerForUserCircles;
@@ -68,11 +70,18 @@ export function drawMarkers(coords: Places, circleOptions = {}) {
     markers.clearLayers();
 
     console.info(`adding ${coords.length} markers`);
-    const layers = coords.map(place => L.marker(place.coordinates));
+    const layers = coords.map(place => L.marker(place.coordinates, {
+        title: place.name,
+        place: place
+    }).on('click', onclick));
     markers.addLayers(layers);
     layerForUserCircles.clearLayers()
 
     console.info('done')
 }
 
+function onclick(ev) {
+    console.log(`clicked on ${this.options.title} ${ev.latlng}`)
+    console.log(this.options.place)
+}
 
