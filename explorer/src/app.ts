@@ -1,6 +1,6 @@
-import {map, drawCircles, enableDrawing} from "./map"
+import {map, drawMarkers, enableDrawing} from "./map"
 import {Circle, Rectangle} from "leaflet";
-import {ApiResponse, ApiRequest, Coordinate} from "./custom_types";
+import {ApiRequest, Place, Places} from "./custom_types";
 // jquery and leaflet are "imported" in the html via <script>
 declare let $;
 declare let L;
@@ -31,10 +31,15 @@ function onDrawn(rect: Circle) {
         venue_types: "bar"
     };
 
-    makeApiRequest(query_strings).then((response: ApiResponse) => {
+    makeApiRequest(query_strings).then((response: Places) => {
 
             console.log(`response from server ${response}`);
-            console.log(new Date())
+            console.log(new Date());
+            const places: Places = response.map((place: Place) => {
+                place.coordinates = new L.LatLng(place.geometry.location.lat, place.geometry.location.lng);
+                return place;
+            });
+            drawMarkers(places)
 
         }, (reason) => {
             let err = reason.err;
@@ -47,7 +52,8 @@ function onDrawn(rect: Circle) {
 
 }
 
-function makeApiRequest(payload: ApiRequest): Promise<ApiResponse> {
+
+function makeApiRequest(payload: ApiRequest): Promise<Places> {
     const api_base_url = (<HTMLInputElement>document.getElementById(api_base_url_dom_id)).value;
     console.log(new Date());
     console.log(`querying to ${api_base_url}`);

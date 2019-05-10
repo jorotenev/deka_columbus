@@ -1,5 +1,7 @@
+import {Place, Places} from "./custom_types";
+
 export let map;
-export let layerForUserRectangles;
+export let layerForUserCircles;
 declare let L;
 // add the map to the page
 map = L.map('map').setView([42.697930, 23.321628], 13);
@@ -10,17 +12,19 @@ L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={
     accessToken: 'pk.eyJ1IjoiY2hpcHNhbiIsImEiOiJqa0JwV1pnIn0.mvduWzyRdcHxK_QIOpetFg'
 }).addTo(map);
 
+var markers = L.markerClusterGroup();
+map.addLayer(markers);
 
 // the collapsible sidebar with redraw/download etc. custom buttons
 let sidebar = L.control.sidebar('sidebar').addTo(map);
 
 // where we draw rectangles
-layerForUserRectangles = new L.FeatureGroup();
-map.addLayer(layerForUserRectangles);
+layerForUserCircles = new L.FeatureGroup();
+map.addLayer(layerForUserCircles);
 // enable the plugin for drawing on the map
 let drawControl = new L.Control.Draw({
     edit: {
-        featureGroup: layerForUserRectangles
+        featureGroup: layerForUserCircles
     },
     draw: {
         circle: true,
@@ -48,8 +52,8 @@ export function enableDrawing(callbackOnCircleDrawn: (circle: L.Circle) => any) 
         let radius = layer.getRadius();
         let center = layer.getLatLng();
         console.log(`radius=${radius} center=${center}`);
-        layerForUserRectangles.clearLayers();
-        layerForUserRectangles.addLayer(layer)
+        layerForUserCircles.clearLayers();
+        layerForUserCircles.addLayer(layer)
 
         callbackOnCircleDrawn(L.circle(layer.getLatLng(), {radius: layer.getRadius()}))
     });
@@ -60,22 +64,15 @@ export function enableDrawing(callbackOnCircleDrawn: (circle: L.Circle) => any) 
 
 var myRenderer = L.canvas({padding: 0.5});
 
-/**
- * Given a layer, coordinates of the center of circles and the radius of the circle,
- * draw the circles on the layer
- * @param {LatLng[]} coords
- * @param {LayerGroup} layer
- * @param {number} circleRadius
- * @param {{}} circleOptions
- */
-export function drawCircles(coords: L.LatLng[], layer: L.LayerGroup, circleRadius = 300, circleOptions = {}) {
-    let opts = {
-        color: "red",
-        ...circleOptions
-    };
-    coords.forEach((coord: L.LatLng) => {
-        L.circle(coord, {radius: circleRadius}, circleOptions).addTo(layer)
-    })
+export function drawMarkers(coords: Places, circleOptions = {}) {
+    markers.clearLayers();
+
+    console.info(`adding ${coords.length} markers`);
+    const layers = coords.map(place => L.marker(place.coordinates));
+    markers.addLayers(layers);
+    layerForUserCircles.clearLayers()
+
+    console.info('done')
 }
 
 
