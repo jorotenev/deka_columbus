@@ -9,6 +9,7 @@ STH, NTH, LNG, LAT = 'southeast', 'northwest', 'lng', 'lat'
 BOUNDARIES_KEY = "cities:boundaries"
 COORDINATES_KEY = "cities:coordinates"
 PLACES_KEY = "cities:places"
+CACHED_DETAILED_PLACES_KEY = "cities:places_detailed_cached"
 
 _facade = None
 
@@ -27,13 +28,14 @@ class _DataStoreFacade():
         log.debug("Initialising data store")
         self.redis_facade = redis_adapter
         self.cities = CityCoords(self.redis_facade)
+        self.place_fetcher = PlaceFetcher(self.redis_facade)
 
-    def query(self, lat, lng, radius, place_types):
+    def query(self, lat, lng, radius, place_types, price):
         try:
             city_name, city_data = self.cities.get_city_matching_query_coords(lat, lng)
             assert city_name, (f"no city in datastore for lat={lat} lng={lng}", NoCityInDataStoreException)
 
-            places = self.get_matching_places_in_city(city_name, lat, lng, radius, place_types)
+            places = self.get_matching_places_in_city(city_name, lat, lng, radius, place_types, price)
             log.debug(f"Found {len(places)} within {city_name}")
             return places
         except AssertionError as ex:
@@ -41,22 +43,22 @@ class _DataStoreFacade():
             log.exception(msg)
             raise exception(msg)
 
-    def get_matching_places_in_city(self, city, lat, lng, radius, place_types):
+    def get_matching_places_in_city(self, city, lat, lng, radius, place_types, price):
         raw_coords_places = self.redis_facade.georadius(key=f'{COORDINATES_KEY}:{city}', lat=lat, lng=lng,
                                                         radius=radius)
-        log.debug(f"Found {len(raw_coords_places)} places for {city}")
+        log.debug(f"Found {len(raw_coords_places)} places for {city} within lat={lat} lng={lng} r={radius}")
 
-        details = [place for place in (self._process_raw_item(city, raw, place_types) for raw in raw_coords_places) if
+        details = [place for place in
+                   (self._process_raw_item(city, raw, place_types, price) for raw in raw_coords_places) if
                    place]
         return details
 
-    def _process_raw_item(self, city, raw_item, place_types):
-        processed_place = self.redis_facade.fetch_item_from_hash(key=f'{PLACES_KEY}:{city}',
-                                                                 item_id=raw_item[0])
-        processed_place_types = processed_place.get("types", [])
+    def _process_raw_item(self, city, raw_item, place_types, price):
+        fetched_place = self.place_fetcher.fetch(place_id=raw_item[0], city=city)
+        processed_place_types = fetched_place.get("types", [])
         valid_place = len(set(place_types).intersection(set(processed_place_types))) > 0
 
-        return processed_place if valid_place else None
+        return fetched_place if valid_place else None
 
 
 class CityCoords():
@@ -96,6 +98,11 @@ class CityCoords():
         return None, None
 
 
+class PlaceFetcher:
 
+    def __init__(self, redis_facade):
+        self.redis_facade = redis_facade
 
-
+    def fetch(self, city, place_id):
+        return self.redis_facade.fetch_item_from_hash(key=f'{PLACES_KEY}:{city}',
+                                                      item_id=place_id)

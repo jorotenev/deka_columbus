@@ -12,6 +12,7 @@ if abs_path and os.path.isfile(abs_path):
 
 
 class BaseConfig(object):
+    DEBUG = True
     TESTING = False
     SECRET_KEY = os.environ['SECRET_KEY']
     SITE_NAME = os.environ.get("SITE_NAME", "site_name.com")

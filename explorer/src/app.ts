@@ -1,6 +1,6 @@
 import {map, drawMarkers, enableDrawing} from "./map"
 import {Circle, Rectangle} from "leaflet";
-import {ApiRequest, Place, Places} from "./custom_types";
+import {ApiRequest, ApiResponse, Place, Places} from "./custom_types";
 // jquery and leaflet are "imported" in the html via <script>
 declare let $;
 declare let L;
@@ -23,15 +23,24 @@ const api_base_url_dom_id = "api_url";
 
 
 function onDrawn(rect: Circle) {
+    const types = [];
+    const price = [];
 
+    $(".venue-type:checked").each((i, el) => {
+        types.push($(el).attr('venue_type'))
+    });
+    $(".venue-price:checked").each((i, el) => {
+        price.push($(el).attr('value'))
+    });
     const query_strings = {
         lat: rect.getLatLng().lat,
         lng: rect.getLatLng().lng,
         radius: rect.getRadius(),
-        venue_types: "bar"
+        venue_types: types.join(","),
+        price: price.join(",")
     };
-
-    makeApiRequest(query_strings).then((response: Places) => {
+    console.log(query_strings);
+    makeApiRequest(query_strings).then((response: ApiResponse[]) => {
 
             console.log(`response from server ${response}`);
             console.log(new Date());
