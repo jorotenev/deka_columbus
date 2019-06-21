@@ -3,6 +3,7 @@
 __pycache__
 .env_prod
 .env_dev
+.env_test
 .env
 
 node_modules
