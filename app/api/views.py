@@ -18,8 +18,6 @@ def ping():
     return make_json_response({"result": "pong"})
 
 
-
-
 @api.route("/query", methods=['GET', 'OPTIONS'])
 @allow_cors
 def query():
@@ -28,6 +26,9 @@ def query():
         facade = get_datastore_facade()
         data = facade.query(args.lat, args.lng, args.radius, args.venue_types, args.price)
         status_code = 200
+    except InvalidRequest:
+        data: "invalid request"
+        status_code = 400
     except NoCityInDataStoreException:
         data = 'no city matches the request'
         status_code = 404
@@ -39,15 +40,29 @@ def query():
 
 
 def extract_args(args):
-    lat = float(args.get('lat'))
-    lng = float(args.get('lng'))
-    radius = int(float(args.get('radius')))
-    venue_types = args.get('venue_types', '').split(",")
-    venue_types = [t.strip() for t in venue_types]
-    price = args.get("price").split(",")
-    log.debug(f"querying lat={lat} lng={lng} radius={radius} venue_types={venue_types} price={price}")
+    try:
+        lat = float(args['lat'])
+        lng = float(args['lng'])
+        radius = int(float(args['radius']))
+        venue_types = args.get('venue_types', '').split(",")
+        venue_types = [t.strip() for t in venue_types]
+        price = args.get("price", '').split(",")
+        open.at = args.get('open_at', None)
+        request = RequestArgs(lat=lat, lng=lng, radius=radius, venue_types=venue_types, price=price)
+        log.debug(
+            f"Request args: {['%s=%s' % (k, v) for (k, v) in request.__dict__.items() if not k.startswith('__')]}")
+        return request
+    except AssertionError as ex:
+        raise InvalidRequest(ex.args[0])
 
-    return RequestArgs(lat=lat, lng=lng, radius=radius, venue_types=venue_types, price=price)
+
+def _parse_open_at(open_at):
+
+    return None
+
+class InvalidRequest(Exception):
+    def __init__(self, *arg):
+        super(InvalidRequest, self).__init__(*arg)
 
 
 class RequestArgs:

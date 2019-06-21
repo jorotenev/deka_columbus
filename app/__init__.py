@@ -27,9 +27,10 @@ def create_app(app_config):
 
     global redis_adapter
     import logging as log
-    log.info(f"Creating an app for environment: {app_config.__class__.__name__}")
 
     app = _base_app(app_config)
+    log.info(f"Creating an app with config from: {app_config.__name__}")
+
     redis_adapter = RedisAdapter(app)
     redis_adapter.init_app(app)
     from .api import api as api_blueprint

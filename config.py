@@ -1,8 +1,6 @@
 import os
 from dotenv import load_dotenv
 
-# from logging import DEBUG, ERROR
-
 # DOT_ENV_FILE holds the name of file in which all environment vars are set.
 # If present, we try to load the vars from this file. it will continue gracefully if file not found etc.
 dot_env_file = os.environ.get("DOT_ENV")
@@ -19,6 +17,7 @@ class BaseConfig(object):
     LOG_LEVEL = "DEBUG"
 
     REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+    GOOGLE_API_KEY = os.environ['GOOGLE_API_KEY']
 
     @classmethod
     def init_app(cls, app):
