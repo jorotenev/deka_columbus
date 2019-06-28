@@ -1,5 +1,6 @@
 import json
 import logging as log
+from datetime import time
 
 from flask import current_app
 
@@ -33,6 +34,7 @@ class _DataStoreFacade():
         self.redis_facade = redis_adapter
         self.cities = CityCoords(self.redis_facade)
         self.place_fetcher = PlaceFetcher(self.redis_facade)
+        self.place_filter = PlaceFilter()
 
     def query(self, lat, lng, radius, place_types, price, open_at):
         try:
@@ -56,15 +58,84 @@ class _DataStoreFacade():
         # fetch place details and filter the ones that match the query
         return [place for place in
                 (self.place_fetcher.fetch(place_id=raw[0], city=city) for raw in raw_places_id_with_coords)
-                if self._place_matches_query(place, query_place_types, query_price)]
+                if self.place_filter.place_matches_query(place, query_place_types, query_price, open_at)]
 
-    def _place_matches_query(self, fetched_place, query_place_types, query_price):
-        processed_place_types = fetched_place.get("types", [])
+
+class PlaceFilter:
+    weekday_google_to_python = {
+        1: 0,  # monday
+        2: 1,
+        3: 2,
+        4: 3,
+        5: 4,
+        6: 5,
+        0: 6  # sunday
+    }
+
+    def place_matches_query(self, place, query_place_types, query_price, open_at) -> bool:
         try:
-            assert len(set(query_place_types).intersection(set(processed_place_types))) > 0
-        except AssertionError:
+            assert self._place_price_matches(place, query_price), "Place is too expensive"
+            assert self._place_is_open(place, open_at), 'place not opened'
+            assert self._place_type_matches(place, query_place_types), 'place types don\'t match'
+
+        except AssertionError as ex:
+            log.debug(ex.args[0])
+            return False
+        except Exception as ex:
+            log.debug(str(ex))
             return False
         return True
+
+    def _place_price_matches(self, place, query_price):
+        place_price_level = place.get("price_level", -1)
+        return query_price >= place_price_level
+
+    def _place_type_matches(self, place, request_place_types):
+        return len(set(request_place_types).intersection(set(place.get("types", [])))) > 0
+
+    def _place_is_open(self, place, request_open_at):
+        request_day_of_week = request_open_at.weekday()  # where monday is 0
+        request_time = request_open_at.time()
+        if place.get("opening_hours", {}).get("periods", {}):
+
+            for i, day in enumerate(place.get('opening_hours').get("periods")):
+                open, close = day['open'], day.get('close', None)
+
+                place_day_of_week_open = self.weekday_google_to_python[int(open['day'])]
+                if place_day_of_week_open == request_day_of_week and close is None:
+                    """if a place is always open, the close section will be missing from the response"""
+                    return True
+                place_day_of_week_close = self.weekday_google_to_python[int(close['day'])]
+
+                _time_open, _time_close = open['time'], close['time']
+                time_open = time(hour=int(_time_open[:2]), minute=int(_time_open[2:]))
+                time_close = time(hour=int(_time_close[:2]), minute=int(_time_close[2:]))
+                if (
+                        # first check when it closes the same day it has opened
+                        (
+                                place_day_of_week_open == request_day_of_week and
+                                place_day_of_week_close == request_day_of_week and
+                                time_open < request_time < time_close
+                        )
+                        or
+                        (
+                                place_day_of_week_open == request_day_of_week and
+                                place_day_of_week_close != request_day_of_week and
+                                time_open < request_time
+                        )
+                        or
+                        (
+                                place_day_of_week_open != request_day_of_week and
+                                place_day_of_week_close == request_day_of_week and
+                                request_time < time_close
+                        )
+                        # if it closes the day after it opens (i.e. closes very late)
+
+                ):
+                    log.debug(
+                        f"Place opened at {request_open_at}. current day opened at {time_open} till {time_close} on {place_day_of_week_open} day, closing on the {place_day_of_week_close} day")
+                    return True
+        return False
 
 
 class CityCoords():
@@ -154,17 +225,17 @@ if __name__ == '__main__':
     from config import configs
 
     if __name__ == '__main__':
-        from dateutil.parser import parse
+        from app.api.views import _parse_open_at
 
-        d = parse('2019-01-01T21:00')
+        d = _parse_open_at('2019-06-25T21')
         print(d)
-    exit(0)
-    _app = create_app(app_config=configs['development'])
-    with _app.app_context():
-        facade = get_datastore_facade()
+        _app = create_app(app_config=configs['development'])
+        with _app.app_context():
+            facade = get_datastore_facade()
 
-        place_fetcher = facade.place_fetcher
+            place_fetcher = facade.place_fetcher
 
-        place = place_fetcher.google_wrapper.query(place_id="ChIJRWXGlmyFqkAR7E1lhoPyEZk")
-        # place = place_fetcher.fetch('sofia', "ChIJRWXGlmyFqkAR7E1lhoPyEZk")
-        print(place)
+            place = place_fetcher.fetch(place_id="ChIJRWXGlmyFqkAR7E1lhoPyEZk", city='sofia')
+            # place = place_fetcher.fetch('sofia', "ChIJRWXGlmyFqkAR7E1lhoPyEZk")
+            # (self, fetched_place, query_place_types, query_price, open_at):
+            facade.place_filter._place_is_open(place, d)

@@ -46,9 +46,12 @@ def extract_args(args):
         radius = int(float(args['radius']))
         venue_types = args.get('venue_types', '').split(",")
         venue_types = [t.strip() for t in venue_types]
-        price = args.get("price", '').split(",")
-        open.at = args.get('open_at', None)
-        request = RequestArgs(lat=lat, lng=lng, radius=radius, venue_types=venue_types, price=price)
+        # from 0 to 4, where 4 is the most expensive one
+        price = int(args.get("price", 0))
+        # YYYY-MM-DDTHH
+        open_at = args.get('open_at', None)
+        request = RequestArgs(lat=lat, lng=lng, radius=radius, venue_types=venue_types, price=price,
+                              open_at=_parse_open_at(open_at))
         log.debug(
             f"Request args: {['%s=%s' % (k, v) for (k, v) in request.__dict__.items() if not k.startswith('__')]}")
         return request
@@ -57,8 +60,10 @@ def extract_args(args):
 
 
 def _parse_open_at(open_at):
+    # 2019-06-21T21
+    from datetime import datetime
+    return datetime.strptime(open_at, "%Y-%m-%dT%H")
 
-    return None
 
 class InvalidRequest(Exception):
     def __init__(self, *arg):
