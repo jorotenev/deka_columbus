@@ -19,6 +19,10 @@ var markers = new L.FeatureGroup();
 map.addLayer(markers);
 
 // the collapsible sidebar with redraw/download etc. custom buttons
+export function cleanMap() {
+    markers.clearLayers();
+    layerForUserCircles.clearLayers()
+}
 
 // where we draw rectangles
 layerForUserCircles = new L.FeatureGroup();

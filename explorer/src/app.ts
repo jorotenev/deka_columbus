@@ -1,4 +1,4 @@
-import {map, drawMarkers, enableDrawing} from "./map"
+import {map, drawMarkers, enableDrawing, cleanMap} from "./map"
 import {Circle, Rectangle} from "leaflet";
 import {ApiRequest, ApiResponse, Place, Places} from "./custom_types";
 // jquery and leaflet are "imported" in the html via <script>
@@ -32,12 +32,15 @@ function onDrawn(rect: Circle) {
     $(".venue-price:checked").each((i, el) => {
         price.push($(el).attr('value'))
     });
+
+    let open_at = $('#open_at').attr('value');
     const query_strings = {
         lat: rect.getLatLng().lat,
         lng: rect.getLatLng().lng,
         radius: rect.getRadius(),
         venue_types: types.join(","),
-        price: price.join(",")
+        price: price.join(","),
+        open_at: open_at
     };
     console.log(query_strings);
     makeApiRequest(query_strings).then((response: ApiResponse[]) => {
@@ -48,7 +51,13 @@ function onDrawn(rect: Circle) {
                 place.coordinates = new L.LatLng(place.geometry.location.lat, place.geometry.location.lng);
                 return place;
             });
-            drawMarkers(places)
+            if (places.length > 0) {
+
+                drawMarkers(places)
+
+            } else {
+                cleanMap()
+            }
 
         }, (reason) => {
             let err = reason.err;
@@ -65,9 +74,9 @@ function onDrawn(rect: Circle) {
 function makeApiRequest(payload: ApiRequest): Promise<Places> {
     const api_base_url = (<HTMLInputElement>document.getElementById(api_base_url_dom_id)).value;
     console.log(new Date());
-    console.log(`querying to ${api_base_url}`);
-
     const query_url = `${api_base_url}`;
+
+    console.log(`querying to ${query_url}`);
 
     return new Promise((resolve, reject) => {
         $.ajax(query_url, {
