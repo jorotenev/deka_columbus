@@ -42,7 +42,7 @@ class _DataStoreFacade():
             assert city_name, (f"no city in datastore for lat={lat} lng={lng}", NoCityInDataStoreException)
 
             places = self.get_matching_places_in_city(city_name, lat, lng, radius, place_types, price, open_at)
-            log.debug(f"Found {len(places)} within {city_name}")
+            log.debug(f"Found {len(places)}places within {city_name} that match the filters`")
             return places
         except AssertionError as ex:
             msg, exception = ex.args[0]
@@ -86,9 +86,9 @@ class PlaceFilter:
             return False
         return True
 
-    def _place_price_matches(self, place, query_price):
-        place_price_level = place.get("price_level", -1)
-        return query_price >= place_price_level
+    def _place_price_matches(self, place, query_prices):
+        place_price_level = int(place.get("price_level", -1))
+        return any([place_price_level == req_price for req_price in query_prices])
 
     def _place_type_matches(self, place, request_place_types):
         return len(set(request_place_types).intersection(set(place.get("types", [])))) > 0
@@ -216,6 +216,8 @@ class PlaceFetcher:
                 self._save_place_details(place_id=place_id, city=city, place_details=place_details)
             else:
                 log.debug("No details from API for " + place_id)
+        else:
+            log.debug(f"Details fetched from cache for {place_id}")
 
         return place_details
 

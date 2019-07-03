@@ -1,5 +1,7 @@
 from flask import request
 import logging as log
+from datetime import datetime
+
 from . import api
 from app.helpers.api_utils import make_json_response, make_error_response, allow_cors
 from app.facades.datastore_facade import get_datastore_facade, NoCityInDataStoreException
@@ -24,7 +26,7 @@ def query():
     try:
         args = extract_args(request.args)
         facade = get_datastore_facade()
-        data = facade.query(args.lat, args.lng, args.radius, args.venue_types, args.price)
+        data = facade.query(args.lat, args.lng, args.radius, args.venue_types, args.price, args.open_at)
         status_code = 200
     except InvalidRequest:
         data: "invalid request"
@@ -46,23 +48,23 @@ def extract_args(args):
         radius = int(float(args['radius']))
         venue_types = args.get('venue_types', '').split(",")
         venue_types = [t.strip() for t in venue_types]
-        # from 0 to 4, where 4 is the most expensive one
-        price = int(args.get("price", 0))
+        # list of ints, from 1 to 4, where 4 is the most expensive one
+        price = list(map(int, args.get("price").split(",")))
         # YYYY-MM-DDTHH
-        open_at = args.get('open_at', None)
+        open_at = _parse_open_at(args.get('open_at', None))
         request = RequestArgs(lat=lat, lng=lng, radius=radius, venue_types=venue_types, price=price,
-                              open_at=_parse_open_at(open_at))
+                              open_at=open_at)
         log.debug(
             f"Request args: {['%s=%s' % (k, v) for (k, v) in request.__dict__.items() if not k.startswith('__')]}")
         return request
     except AssertionError as ex:
+        log.debug(str(ex))
         raise InvalidRequest(ex.args[0])
 
 
 def _parse_open_at(open_at):
     # 2019-06-21T21
-    from datetime import datetime
-    return datetime.strptime(open_at, "%Y-%m-%dT%H")
+    return datetime.strptime(open_at, "%Y-%m-%dT%H:%M")
 
 
 class InvalidRequest(Exception):
